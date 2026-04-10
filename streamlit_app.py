@@ -34,13 +34,22 @@ with col1:
 with col2:
     detalhes = st.text_area("Descreva o contexto (local, idade da obra, etc.):")
     analisar = st.button("Executar Diagnóstico Técnico", type="primary")
-
-if analisar and foto:
-    with st.spinner('Analisando conforme normas técnicas...'):
-        prompt = f"""
-        Aja como um perito em engenharia civil. Analise a imagem e os detalhes: {detalhes}.
-        Identifique a patologia, cite as NBRs brasileiras relevantes e sugira a conduta técnica.
-        """
-        response = model.generate_content([prompt, img])
-        st.markdown("### 📋 Resultado da Análise")
-        st.write(response.text)
+if analisar:
+    if foto is not None:
+        with st.spinner('Analisando conforme normas técnicas...'):
+            # Criamos o prompt usando o que você escreveu em 'detalhes'
+            prompt_completo = f"""
+            Aja como um perito em engenharia civil. 
+            Analise a imagem e o seguinte contexto: {detalhes}
+            Identifique a patologia, cite as NBRs brasileiras relevantes 
+            e sugira ações de correção.
+            """
+            
+            # Usamos a 'img' que foi aberta lá em cima
+            response = model.generate_content([prompt_completo, img])
+            
+            st.markdown("---")
+            st.markdown("### 📋 Resultado da Análise")
+            st.write(response.text)
+    else:
+        st.warning("⚠️ Por favor, suba uma foto da patologia antes de clicar em analisar.")
