@@ -6,7 +6,7 @@ import os
 # 1. Configuração da Página
 st.set_page_config(page_title="PatologiaBR", page_icon="🏗️", layout="wide")
 
-# 2. Puxa a chave de forma segura
+# 2. Configuração da Chave API (Segurança)
 api_key = st.secrets.get("GOOGLE_API_KEY") or os.getenv("GOOGLE_API_KEY")
 
 if api_key:
@@ -20,46 +20,56 @@ else:
 st.title("🏗️ PatologiaBR: Analista Técnico I.A.")
 st.write("Análise de patologias da construção baseada em NBRs.")
 
-col1, col2 = st.columns(2)
-
-# Inicializamos as variáveis para evitar erro de "NameError"
+# --- INICIALIZAÇÃO DE VARIÁVEIS ---
+# Isso evita o erro 'NameError' pois as variáveis já existem antes do clique
 img = None
+detalhes = ""
+
+col1, col2 = st.columns(2)
 
 with col1:
     foto = st.file_uploader("Suba a foto da patologia", type=["jpg", "png", "jpeg"])
     if foto:
-        img = Image.open(foto)
-        st.image(img, caption="Imagem para análise", use_container_width=True)
+        try:
+            img = Image.open(foto)
+            st.image(img, caption="Imagem para análise", use_container_width=True)
+        except Exception as e:
+            st.error(f"Erro ao abrir imagem: {e}")
 
 with col2:
-    detalhes = st.text_area("Descreva o contexto (local, idade da obra, etc.):")
+    detalhes = st.text_area("Descreva o contexto (local, idade da obra, material, etc.):", 
+                            placeholder="Ex: Viga de concreto armado com sinais de corrosão, obra de 20 anos.")
     analisar = st.button("Executar Diagnóstico Técnico", type="primary")
 
-# 4. Bloco de Execução (Sempre colado na margem esquerda)
+# --- BLOCO DE EXECUÇÃO ---
 if analisar:
     if img is not None:
-        with st.spinner('Analisando conforme normas técnicas brasileiras...'):
+        with st.spinner('Consultando normas e analisando imagem...'):
             try:
-                # Criamos o prompt técnico
+                # Criamos o prompt dentro do bloco de execução
                 prompt_completo = f"""
-                Aja como um perito em engenharia civil especializado em patologias.
-                Analise a imagem fornecida e considere este contexto: {detalhes}.
+                Aja como um perito em engenharia civil especialista em patologias das construções.
+                Analise a imagem fornecida considerando este contexto: {detalhes}.
                 
-                Sua resposta deve ser técnica e organizada:
-                1. Identificação da patologia observada.
-                2. Prováveis causas técnicas.
-                3. Normas NBR aplicáveis (ex: NBR 6118, 15575, 5674).
-                4. Sugestões de conduta ou reparo.
+                Forneça um relatório técnico estruturado:
+                1. IDENTIFICAÇÃO: O que é observado na imagem?
+                2. CAUSAS PROVÁVEIS: Por que isso aconteceu?
+                3. NORMAS TÉCNICAS: Cite as NBRs relevantes (ex: NBR 6118, 15575, 6122, etc).
+                4. RECOMENDAÇÕES: Quais os próximos passos técnicos sugeridos?
                 """
                 
-                # Envia para a I.A.
+                # Chamada da I.A.
                 response = model.generate_content([prompt_completo, img])
                 
                 st.markdown("---")
-                st.markdown("### 📋 Resultado do Diagnóstico")
+                st.subheader("📋 Resultado do Diagnóstico Técnico")
                 st.write(response.text)
                 
             except Exception as e:
-                st.error(f"Erro ao processar análise: {e}")
+                st.error(f"Erro na comunicação com a I.A.: {e}")
     else:
-        st.warning("⚠️ Por favor, suba uma foto antes de clicar em analisar.")
+        st.warning("⚠️ Atenção: Você precisa carregar uma foto antes de executar o diagnóstico.")
+
+# Rodapé técnico
+st.markdown("---")
+st.caption("PatologiaBR - Ferramenta de auxílio técnico para profissionais da construção.")
