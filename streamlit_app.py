@@ -4,72 +4,94 @@ import google.generativeai as genai
 import os
 
 # 1. Configuração da Página
-st.set_page_config(page_title="PatologiaBR", page_icon="🏗️", layout="wide")
+st.set_page_config(
+    page_title="PatologiaBR", 
+    page_icon="🏗️", 
+    layout="wide"
+)
 
-# 2. Configuração da Chave API (Segurança)
-api_key = st.secrets.get("GOOGLE_API_KEY") or os.getenv("GOOGLE_API_KEY")
+# 2. Configuração da Chave API
+# O código busca a chave nos Secrets do Streamlit para sua segurança
+api_key = st.secrets.get("GOOGLE_API_KEY")
 
 if api_key:
-    genai.configure(api_key=api_key)
-    model = genai.GenerativeModel('gemini-1.5-flash-latest')
+    # Remove espaços em branco acidentais
+    api_key = api_key.strip()
+    try:
+        genai.configure(api_key=api_key)
+        # Usando a versão estável e rápida para análise de imagens
+        model = genai.GenerativeModel('gemini-1.5-flash')
+    except Exception as e:
+        st.error(f"Erro ao configurar o Google Gemini: {e}")
+        st.stop()
 else:
-    st.error("ERRO: Chave API não configurada nos Secrets do Streamlit.")
+    st.error("❌ ERRO: Chave API não configurada nos Secrets do Streamlit.")
+    st.info("💡 Vá em Settings > Secrets e adicione: GOOGLE_API_KEY = 'sua_chave_aqui'")
     st.stop()
 
-# 3. Título e Interface
+# 3. Interface do Usuário
 st.title("🏗️ PatologiaBR: Analista Técnico I.A.")
-st.write("Análise de patologias da construção baseada em NBRs.")
+st.write("Diagnóstico inteligente de patologias da construção civil baseado em NBRs.")
 
-# --- INICIALIZAÇÃO DE VARIÁVEIS ---
-# Isso evita o erro 'NameError' pois as variáveis já existem antes do clique
+# Inicialização da variável de imagem para evitar erros de fluxo
 img = None
-detalhes = ""
 
 col1, col2 = st.columns(2)
 
 with col1:
-    foto = st.file_uploader("Suba a foto da patologia", type=["jpg", "png", "jpeg"])
+    st.subheader("📸 Registro Fotográfico")
+    foto = st.file_uploader("Suba a imagem da patologia (JPG, PNG, JPEG)", type=["jpg", "png", "jpeg"])
     if foto:
         try:
             img = Image.open(foto)
-            st.image(img, caption="Imagem para análise", use_container_width=True)
+            st.image(img, caption="Imagem carregada para análise", use_container_width=True)
         except Exception as e:
-            st.error(f"Erro ao abrir imagem: {e}")
+            st.error(f"Erro ao processar imagem: {e}")
 
 with col2:
-    detalhes = st.text_area("Descreva o contexto (local, idade da obra, material, etc.):", 
-                            placeholder="Ex: Viga de concreto armado com sinais de corrosão, obra de 20 anos.")
-    analisar = st.button("Executar Diagnóstico Técnico", type="primary")
+    st.subheader("📝 Contexto da Inspeção")
+    detalhes = st.text_area(
+        "Descreva o local e detalhes observados:", 
+        placeholder="Ex: Fissura em viga de concreto, prédio de 15 anos, ambiente industrial.",
+        height=150
+    )
+    analisar = st.button("🚀 Executar Diagnóstico Técnico", type="primary", use_container_width=True)
 
-# --- BLOCO DE EXECUÇÃO ---
+# 4. Bloco de Execução da Análise
 if analisar:
     if img is not None:
-        with st.spinner('Consultando normas e analisando imagem...'):
+        with st.spinner('Analisando imagem e consultando normas técnicas...'):
             try:
-                # Criamos o prompt dentro do bloco de execução
-                prompt_completo = f"""
-                Aja como um perito em engenharia civil especialista em patologias das construções.
-                Analise a imagem fornecida considerando este contexto: {detalhes}.
+                # Prompt estruturado para perfil técnico/pericial
+                prompt_tecnico = f"""
+                Aja como um Engenheiro Civil perito em Patologia das Construções.
+                Analise a imagem fornecida e considere este contexto adicional: {detalhes}.
                 
-                Forneça um relatório técnico estruturado:
-                1. IDENTIFICAÇÃO: O que é observado na imagem?
-                2. CAUSAS PROVÁVEIS: Por que isso aconteceu?
-                3. NORMAS TÉCNICAS: Cite as NBRs relevantes (ex: NBR 6118, 15575, 6122, etc).
-                4. RECOMENDAÇÕES: Quais os próximos passos técnicos sugeridos?
+                Forneça um relatório técnico organizado nos seguintes tópicos:
+                1. DIAGNÓSTICO: Identificação técnica da patologia vista na foto.
+                2. CAUSAS PROVÁVEIS: Por que esse problema ocorreu?
+                3. NORMAS TÉCNICAS: Referencie NBRs brasileiras relevantes (ex: NBR 6118, NBR 15575, NBR 5674).
+                4. RECOMENDAÇÕES: Sugestões práticas de reparo ou necessidade de ensaios.
+                
+                Seja objetivo, profissional e técnico.
                 """
                 
-                # Chamada da I.A.
-                response = model.generate_content([prompt_completo, img])
+                # Chamada para a API enviando texto e imagem
+                response = model.generate_content([prompt_tecnico, img])
                 
                 st.markdown("---")
-                st.subheader("📋 Resultado do Diagnóstico Técnico")
+                st.success("✅ Diagnóstico Concluído")
+                st.markdown("### 📋 Relatório de Análise Técnica")
                 st.write(response.text)
                 
             except Exception as e:
-                st.error(f"Erro na comunicação com a I.A.: {e}")
+                if "API key not valid" in str(e):
+                    st.error("❌ Chave API Inválida! Verifique se a chave no Secrets está correta.")
+                else:
+                    st.error(f"Erro durante a análise: {e}")
     else:
-        st.warning("⚠️ Atenção: Você precisa carregar uma foto antes de executar o diagnóstico.")
+        st.warning("⚠️ Atenção: Você precisa carregar uma foto antes de iniciar a análise.")
 
-# Rodapé técnico
+# Rodapé
 st.markdown("---")
-st.caption("PatologiaBR - Ferramenta de auxílio técnico para profissionais da construção.")
+st.caption("PatologiaBR - Assistente Digital para Gerenciamento de Obras e Perícias.")
